@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="ka">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080808">
+  <meta name="description" content="Modi — საბანკო რეკვიზიტები">
+  <title>Modi | გადარიცხვა</title>
+  <style>
+    :root { color-scheme: dark; --orange:#ff7900; --black:#080808; --panel:#141414; --muted:#a6a6a6; }
+    * {box-sizing:border-box}
+    body {margin:0;min-height:100vh;min-height:100dvh;background:var(--black);color:#fff;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;display:flex;align-items:center;justify-content:center;padding:24px 14px;overflow-x:hidden}
+    main {width:100%;max-width:490px;min-width:0}
+    header{text-align:center;margin-bottom:26px}
+    h1{font-size:clamp(64px,15vw,92px);font-weight:900;font-style:italic;letter-spacing:-.045em;color:var(--orange);line-height:1;margin:0}
+    header p{color:#dedede;margin:14px 0 0;font-size:15px}
+    .card{background:var(--panel);border:1.5px solid var(--orange);border-radius:24px;padding:24px;box-shadow:0 16px 45px #0008}
+    .eyebrow{color:var(--orange);font-weight:700;font-size:14px;margin:0 0 7px}
+    h2{margin:0 0 24px;font-size:25px}
+    .banks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:24px}
+    button{font:inherit;cursor:pointer}
+    .bank{background:#242424;border:1px solid #505050;border-radius:13px;padding:15px 8px;color:#fff;font-size:14px;font-weight:700;min-height:65px;min-width:0;overflow-wrap:anywhere;line-height:1.4}
+    .bank[aria-pressed="true"]{background:var(--orange);border-color:var(--orange);color:#111}
+    .field-label{display:block;color:#bbb;font-size:13px;margin:0 0 8px}
+    .field{background:#242424;border:1px solid #474747;border-radius:12px;padding:15px 13px;overflow-wrap:anywhere;font-size:clamp(14px,4vw,17px);margin-bottom:20px;user-select:text}
+    #iban{font-variant-numeric:tabular-nums;letter-spacing:.5px}
+    .copy{width:100%;border:0;border-radius:13px;background:var(--orange);color:#111;font-weight:800;padding:16px;font-size:16px;min-height:54px}
+    .copy:disabled{background:#5c4938;color:#d3c5b8;cursor:not-allowed}
+    .note{font-size:12px;color:var(--muted);line-height:1.6;margin:16px 0 0}
+    #status{min-height:22px;margin:10px 0 0;color:#ffb66d;font-size:13px}
+    footer{text-align:center;color:#777;font-size:12px;margin-top:24px}
+    button:focus-visible{outline:3px solid #fff;outline-offset:3px}
+    @media(max-width:420px){body{padding:20px 12px}.card{padding:18px}h2{font-size:22px}.bank{font-size:12px;padding:12px 5px}header{margin-bottom:20px}}
+    @media(max-width:300px){.banks{grid-template-columns:minmax(0,1fr)}.card{padding:14px}h1{font-size:58px}.copy{font-size:14px}}
+    @media(prefers-reduced-motion:no-preference){.bank,.copy{transition:background-color .15s ease,border-color .15s ease}}
+  </style>
+</head>
+<body>
+  <main>
+    <header><h1>Modi</h1></header>
+    <section class="card" aria-label="საბანკო რეკვიზიტები">
+      <p class="eyebrow">საბანკო რეკვიზიტები</p>
+      <h2>აირჩიეთ ბანკი</h2>
+      <div class="banks" role="group" aria-label="ბანკის არჩევა">
+        <button class="bank" id="bog" type="button" aria-pressed="true">საქართველოს ბანკი</button>
+        <button class="bank" id="tbc" type="button" aria-pressed="false">თიბისი ბანკი</button>
+      </div>
+      <div class="field-label">მიმღები</div>
+      <div class="field" id="recipient">მიმღები დასამატებელია</div>
+      <div class="field-label">ანგარიშის ნომერი (IBAN)</div>
+      <div class="field" id="iban">ანგარიში დასამატებელია</div>
+      <button class="copy" id="copy" type="button" disabled>ანგარიშის ნომრის კოპირება</button>
+      <p id="status" role="status" aria-live="polite"></p>
+      <p class="note">გადარიცხვამდე გადაამოწმეთ მიმღები და ანგარიშის ნომერი. გადარიცხვა სრულდება თქვენს საბანკო აპლიკაციაში. გადახდის შემდეგ აცნობეთ მოლარეს </p>
+    </section>
+    <footer>© Modi</footer>
+  </main>
+  <script>
+    // =======================================================
+    // მხოლოდ აქ შეცვალეთ მიმღებები და ჩაწერეთ რეალური IBAN-ები.
+    // თუ საქართველოს ბანკის მიმღებია გულია ნადირაშვილი, დატოვეთ როგორც არის.
+    // =======================================================
+    const ACCOUNTS = {
+      bog: { recipient: "გულია ნ.", iban: "GE92BG0000000204137400" }, // საქართველოს ბანკი
+      tbc: { recipient: "ქეთევან ბ.", iban: "GE91TB7529845068100017" } // თიბისი ბანკი
+    };
+
+    const buttons = {bog:document.getElementById('bog'),tbc:document.getElementById('tbc')};
+    const ibanField = document.getElementById('iban');
+    const recipientField = document.getElementById('recipient');
+    const copyButton = document.getElementById('copy');
+    const status = document.getElementById('status');
+    let selected = 'bog';
+
+    function getIban(bank) {
+      const raw = ACCOUNTS[bank].iban.replace(/\s+/g,'').toUpperCase();
+      return /^GE\d{2}[A-Z]{2}\d{16}$/.test(raw) ? raw : '';
+    }
+    function render(bank) {
+      selected=bank;
+      Object.keys(buttons).forEach(key=>buttons[key].setAttribute('aria-pressed',String(key===bank)));
+      const iban=getIban(bank);
+      recipientField.textContent=ACCOUNTS[bank].recipient.trim()||'მიმღები დასამატებელია';
+      ibanField.textContent=iban||'ანგარიში დასამატებელია';
+      copyButton.disabled=!iban || !ACCOUNTS[bank].recipient.trim();
+      status.textContent='';
+    }
+    Object.keys(buttons).forEach(key=>buttons[key].addEventListener('click',()=>render(key)));
+    copyButton.addEventListener('click',async()=>{
+      const iban=getIban(selected);
+      if(!iban)return;
+      try {
+        if(navigator.clipboard && window.isSecureContext){await navigator.clipboard.writeText(iban)}
+        else {const el=document.createElement('textarea');el.value=iban;el.style.position='fixed';el.style.opacity='0';document.body.appendChild(el);el.select();const ok=document.execCommand('copy');el.remove();if(!ok)throw new Error('copy failed')}
+        status.textContent='ანგარიშის ნომერი დაკოპირებულია ✓';
+      } catch {status.textContent='კოპირება ვერ მოხერხდა. მონიშნეთ და დააკოპირეთ ნომერი ხელით.'}
+    });
+    render('bog');
+  </script>
+</body>
+</html>
